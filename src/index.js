@@ -83,22 +83,18 @@ function MarketWorkspace() {
         ))}
       </Tabs>
 
-      {markets.map((market, index) => (
-        <div
-          key={market.currency}
-          role="tabpanel"
-          hidden={activeTab !== index}
-          id={`market-tabpanel-${index}`}
-        >
-          <App
-            currency={market.currency}
-            wallet={sharedWallet}
-            setWallet={setSharedWallet}
-            positions={sharedPositions}
-            setPositions={setSharedPositions}
-          />
-        </div>
-      ))}
+      <div
+        role="tabpanel"
+        id={`market-tabpanel-${activeTab}`}
+      >
+        <App
+          currency={markets[activeTab].currency}
+          wallet={sharedWallet}
+          setWallet={setSharedWallet}
+          positions={sharedPositions}
+          setPositions={setSharedPositions}
+        />
+      </div>
     </Box>
   );
 }

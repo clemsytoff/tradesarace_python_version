@@ -20,10 +20,23 @@ body {
   margin: 0;
   font-family: 'Space Grotesk', sans-serif;
   color: var(--text-primary);
+  overflow-x: hidden;
   background:
     radial-gradient(800px 500px at 10% -15%, rgba(81, 128, 255, 0.25), transparent 60%),
     radial-gradient(700px 500px at 100% 0%, rgba(59, 208, 139, 0.16), transparent 55%),
     linear-gradient(180deg, #05070f 0%, #0a1020 70%, #080b14 100%);
+}
+
+.app-shell,
+.app-content,
+.market-column,
+.side-column,
+.chart-card,
+.wallet-panel,
+.trade-panel,
+.positions-panel,
+.position-card {
+  min-width: 0;
 }
 
 .app-shell {
@@ -502,6 +515,7 @@ body {
 
 .position-details strong {
   font-size: 0.9rem;
+  word-break: break-word;
 }
 
 .pnl-percentage {
@@ -617,6 +631,15 @@ body {
   .buy-submit,
   .sell-submit {
     font-size: 0.86rem;
+  }
+
+  .app-content {
+    gap: 10px;
+  }
+
+  .market-column,
+  .side-column {
+    gap: 10px;
   }
 }
 
