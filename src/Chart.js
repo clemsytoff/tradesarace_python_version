@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react';
 import { LineChart } from '@mui/x-charts/LineChart';
 
 function Chart({
@@ -7,6 +8,35 @@ function Chart({
   timeStampRequest = 'h',
   setTimeStampRequest = () => {},
 }) {
+  const chartWrapperRef = useRef(null);
+  const [chartWidth, setChartWidth] = useState(width);
+  const [chartHeight, setChartHeight] = useState(height);
+
+  useEffect(() => {
+    function updateChartSize() {
+      const containerWidth = chartWrapperRef.current?.clientWidth || width;
+      const viewportWidth = window.innerWidth;
+      const nextHeight = viewportWidth < 480 ? 250 : viewportWidth < 768 ? 300 : height;
+
+      setChartWidth(Math.max(Math.floor(containerWidth), 280));
+      setChartHeight(nextHeight);
+    }
+
+    updateChartSize();
+    window.addEventListener('resize', updateChartSize);
+
+    let resizeObserver;
+    if (typeof ResizeObserver !== 'undefined' && chartWrapperRef.current) {
+      resizeObserver = new ResizeObserver(updateChartSize);
+      resizeObserver.observe(chartWrapperRef.current);
+    }
+
+    return () => {
+      window.removeEventListener('resize', updateChartSize);
+      if (resizeObserver) resizeObserver.disconnect();
+    };
+  }, [width, height]);
+
   if (!data || data.length === 0) return null;
 
   const yValues = data.map((point) => point.y);
@@ -90,10 +120,10 @@ function Chart({
         </strong>
       </div>
 
-      <div className="chart-wrapper">
+      <div className="chart-wrapper" ref={chartWrapperRef}>
         <LineChart
-          width={width}
-          height={height}
+          width={chartWidth}
+          height={chartHeight}
           dataset={data}
           margin={{ top: 16, right: 72, bottom: 22, left: 20 }}
           grid={{ horizontal: true, vertical: true }}

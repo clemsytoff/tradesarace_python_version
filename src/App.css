@@ -29,6 +29,8 @@ body {
 .app-shell {
   min-height: 100vh;
   padding: 20px;
+  width: 100%;
+  overflow-x: hidden;
 }
 
 .app-header {
@@ -122,7 +124,7 @@ body {
 
 .chart-wrapper {
   width: 100%;
-  overflow-x: auto;
+  overflow: hidden;
 }
 
 .chart-terminal {
@@ -131,6 +133,7 @@ body {
   border: 1px solid rgba(143, 154, 188, 0.2);
   background: linear-gradient(180deg, #0b1020 0%, #0a0f1c 100%);
   padding: 10px 10px 6px;
+  overflow: hidden;
 }
 
 .chart-toolbar {
@@ -145,6 +148,7 @@ body {
 .chart-timeframes {
   display: flex;
   gap: 6px;
+  flex-wrap: wrap;
 }
 
 .chart-tools button,
@@ -533,7 +537,7 @@ body {
 
 @media (max-width: 700px) {
   .app-shell {
-    padding: 14px;
+    padding: 10px;
   }
 
   .app-header {
@@ -577,12 +581,65 @@ body {
     align-items: flex-start;
   }
 
+  .chart-tools button,
+  .chart-timeframes button {
+    font-size: 0.68rem;
+    padding: 4px 7px;
+  }
+
   .chart-ohlc {
     flex-wrap: wrap;
     gap: 8px;
+    font-size: 0.7rem;
   }
 
   .chart-ohlc strong {
     margin-left: 0;
+  }
+
+  .live-price-tag {
+    top: 56px;
+    right: 8px;
+    font-size: 0.68rem;
+    padding: 3px 6px;
+  }
+
+  .wallet-panel,
+  .trade-panel,
+  .chart-card,
+  .positions-panel {
+    padding: 10px;
+  }
+
+  .trade-panel select,
+  .trade-panel input,
+  .side-toggle button,
+  .buy-submit,
+  .sell-submit {
+    font-size: 0.86rem;
+  }
+}
+
+@media (max-width: 420px) {
+  .market-pill {
+    font-size: 0.72rem;
+    padding: 6px 10px;
+  }
+
+  .app-header h1 {
+    font-size: 1.2rem;
+  }
+
+  .market-stats article {
+    padding: 10px;
+  }
+
+  .market-stats strong {
+    font-size: 0.96rem;
+  }
+
+  .position-risk {
+    flex-direction: column;
+    gap: 4px;
   }
 }
