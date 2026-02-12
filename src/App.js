@@ -1,23 +1,627 @@
-import logo from './logo.svg';
+import React, { useMemo, useState, useEffect } from 'react';
 import './App.css';
+import Chart from './Chart';
 
-function App() {
+function App({ width = 900, height = 520, currency = 'bitcoin' }) {
+  const [data, setData] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [side, setSide] = useState('buy');
+  const [leverage, setLeverage] = useState('5');
+  const [orderType, setOrderType] = useState('market');
+  const [amount, setAmount] = useState('0.01');
+  const [limitPrice, setLimitPrice] = useState('');
+  const [stopLoss, setStopLoss] = useState('');
+  const [takeProfit, setTakeProfit] = useState('');
+  const [tradeError, setTradeError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
+  const [positions, setPositions] = useState([]);
+  const [wallet, setWallet] = useState({
+    usdBalance: 12500,
+    btcBalance: 0.35,
+    bonus: 185,
+  });
+  const [timeStampRequest, setTimeStampRequest] = useState('h');
+  const [timeframeRefreshKey, setTimeframeRefreshKey] = useState(0);
+
+  function normalizeUnixTimestamp(rawTimestamp) {
+    const n = Number(rawTimestamp);
+    return n < 1e12 ? n * 1000 : n;
+  }
+
+  function setTimeStampRequestWrapper(value) {
+    setData([]);
+    setIsLoading(true);
+    setTimeStampRequest(value);
+    setTimeframeRefreshKey((current) => current + 1);
+  }
+
+  useEffect(() => {
+    let isActive = true;
+    let timeoutId;
+    let activeController;
+
+    async function loadChartData(isBackground = false) {
+      if (!isBackground) {
+        setIsLoading(true);
+        setError('');
+      }
+
+      activeController = new AbortController();
+
+      try {
+        const response = await fetch(
+          `https://price-api.crypto.com/price/v2/${timeStampRequest}/${currency}/?t=${Date.now()}`,
+          {
+            signal: activeController.signal,
+            cache: 'no-store',
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error(`Failed to fetch market data (${response.status})`);
+        }
+
+        const payload = await response.json();
+        if (!payload?.prices?.length) {
+          throw new Error('No price data returned from API');
+        }
+
+        const normalized = payload.prices.map(([timestamp, price]) => ({
+          x: new Date(normalizeUnixTimestamp(timestamp)),
+          y: Number(price),
+        }));
+
+        if (isActive) {
+          setData(normalized);
+          setError('');
+        }
+      } catch (fetchError) {
+        if (isActive && fetchError.name !== 'AbortError') {
+          setError(fetchError.message || 'Unable to load bitcoin chart');
+          if (!isBackground) setData([]);
+        }
+      } finally {
+        if (isActive && !isBackground) setIsLoading(false);
+        if (isActive) {
+          timeoutId = setTimeout(() => loadChartData(true), 10000);
+        }
+      }
+    }
+
+    loadChartData();
+
+    return () => {
+      isActive = false;
+      clearTimeout(timeoutId);
+      if (activeController) activeController.abort();
+    };
+  }, [currency, timeStampRequest, timeframeRefreshKey]);
+
+  const latestPrice = useMemo(() => {
+    if (!data.length) return 0;
+    return Number(data[data.length - 1]?.y) || 0;
+  }, [data]);
+
+  const parsedAmount = Number(amount) || 0;
+  const parsedLeverage = Number(leverage) || 1;
+  const parsedLimitPrice = Number(limitPrice) || 0;
+  const executionPrice = orderType === 'market' ? latestPrice : parsedLimitPrice || latestPrice;
+  const notionalValue = parsedAmount * executionPrice;
+  const estimatedMargin = parsedLeverage > 0 ? notionalValue / parsedLeverage : 0;
+
+  const unrealizedPnl = useMemo(() => {
+    if (!positions.length || !latestPrice) return 0;
+    return positions.reduce((total, position) => {
+      const direction = position.side === 'buy' ? 1 : -1;
+      const pnl = (latestPrice - position.executionPrice) * position.amount * direction * position.leverage;
+      return total + pnl;
+    }, 0);
+  }, [positions, latestPrice]);
+
+  const availableBalance = useMemo(() => {
+    const marginInUse = positions.reduce((total, pos) => {
+      return total + (pos.amount * pos.executionPrice / pos.leverage);
+    }, 0);
+    return wallet.usdBalance - marginInUse;
+  }, [wallet.usdBalance, positions]);
+
+  const positionsSummary = useMemo(() => {
+    return positions.reduce(
+      (acc, position) => {
+        const direction = position.side === 'buy' ? 1 : -1;
+        const pnl = latestPrice
+          ? (latestPrice - position.executionPrice) * position.amount * direction * position.leverage
+          : 0;
+        acc.notional += position.amount * position.executionPrice;
+        acc.margin += position.amount * position.executionPrice / position.leverage;
+        acc.longCount += position.side === 'buy' ? 1 : 0;
+        acc.shortCount += position.side === 'sell' ? 1 : 0;
+        acc.winning += pnl >= 0 ? 1 : 0;
+        return acc;
+      },
+      { notional: 0, margin: 0, longCount: 0, shortCount: 0, winning: 0 }
+    );
+  }, [positions, latestPrice]);
+
+  function formatCurrency(value) {
+    return `$${Number(value || 0).toLocaleString(undefined, {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })}`;
+  }
+
+  function formatBtc(value) {
+    return `${Number(value || 0).toFixed(4)} BTC`;
+  }
+
+  function validateOrder() {
+    if (!latestPrice) {
+      return 'Live price is not available yet.';
+    }
+    if (parsedAmount <= 0) {
+      return 'Enter a valid order size.';
+    }
+    if (parsedAmount < 0.001) {
+      return 'Minimum order size is 0.001 BTC.';
+    }
+    if (orderType !== 'market' && parsedLimitPrice <= 0) {
+      return 'Limit price must be greater than 0.';
+    }
+    if (estimatedMargin > availableBalance) {
+      return `Insufficient balance. Available: ${formatCurrency(availableBalance)}`;
+    }
+    if (stopLoss && Number(stopLoss) > 0) {
+      const slPrice = Number(stopLoss);
+      if (side === 'buy' && slPrice >= executionPrice) {
+        return 'Stop loss must be below entry price for long positions.';
+      }
+      if (side === 'sell' && slPrice <= executionPrice) {
+        return 'Stop loss must be above entry price for short positions.';
+      }
+    }
+    if (takeProfit && Number(takeProfit) > 0) {
+      const tpPrice = Number(takeProfit);
+      if (side === 'buy' && tpPrice <= executionPrice) {
+        return 'Take profit must be above entry price for long positions.';
+      }
+      if (side === 'sell' && tpPrice >= executionPrice) {
+        return 'Take profit must be below entry price for short positions.';
+      }
+    }
+    return null;
+  }
+
+  function handlePlaceOrder(event) {
+    event.preventDefault();
+    setTradeError('');
+    setSuccessMessage('');
+
+    const validationError = validateOrder();
+    if (validationError) {
+      setTradeError(validationError);
+      return;
+    }
+
+    const newPosition = {
+      id: Date.now(),
+      side,
+      orderType,
+      leverage: parsedLeverage,
+      amount: parsedAmount,
+      executionPrice,
+      stopLoss: Number(stopLoss) || null,
+      takeProfit: Number(takeProfit) || null,
+      placedAt: new Date(),
+    };
+
+    setPositions((current) => [...current, newPosition]);
+    setWallet((current) => ({
+      ...current,
+      usdBalance: current.usdBalance,
+    }));
+
+    setSuccessMessage(
+      `Position opened: ${side === 'buy' ? 'LONG' : 'SHORT'} ${parsedAmount} BTC at ${formatCurrency(
+        executionPrice
+      )} with ${parsedLeverage}x leverage`
+    );
+
+    setAmount('0.01');
+    setLimitPrice('');
+    setStopLoss('');
+    setTakeProfit('');
+
+    setTimeout(() => setSuccessMessage(''), 5000);
+  }
+
+  function handleClosePosition(positionId) {
+    const position = positions.find((p) => p.id === positionId);
+    if (!position || !latestPrice) return;
+
+    const direction = position.side === 'buy' ? 1 : -1;
+    const pnl = (latestPrice - position.executionPrice) * position.amount * direction * position.leverage;
+    const returnedMargin = position.amount * position.executionPrice / position.leverage;
+
+    setWallet((current) => ({
+      ...current,
+      usdBalance: current.usdBalance + returnedMargin + pnl,
+    }));
+
+    setPositions((current) => current.filter((p) => p.id !== positionId));
+    setSuccessMessage(
+      `Position closed. PnL: ${pnl >= 0 ? '+' : ''}${formatCurrency(pnl)}`
+    );
+    setTimeout(() => setSuccessMessage(''), 5000);
+  }
+
+  function handleCloseAllPositions() {
+    if (!positions.length || !latestPrice) return;
+
+    const totals = positions.reduce(
+      (acc, position) => {
+        const direction = position.side === 'buy' ? 1 : -1;
+        const pnl = (latestPrice - position.executionPrice) * position.amount * direction * position.leverage;
+        const returnedMargin = position.amount * position.executionPrice / position.leverage;
+        acc.pnl += pnl;
+        acc.returnedMargin += returnedMargin;
+        return acc;
+      },
+      { pnl: 0, returnedMargin: 0 }
+    );
+
+    setWallet((current) => ({
+      ...current,
+      usdBalance: current.usdBalance + totals.returnedMargin + totals.pnl,
+    }));
+    setPositions([]);
+    setSuccessMessage(
+      `All positions closed. Net PnL: ${totals.pnl >= 0 ? '+' : ''}${formatCurrency(totals.pnl)}`
+    );
+    setTimeout(() => setSuccessMessage(''), 5000);
+  }
+
+  useEffect(() => {
+    if (!latestPrice || !positions.length) return;
+
+    positions.forEach((position) => {
+      let shouldClose = false;
+
+      if (position.stopLoss) {
+        if (position.side === 'buy' && latestPrice <= position.stopLoss) {
+          shouldClose = true;
+        } else if (position.side === 'sell' && latestPrice >= position.stopLoss) {
+          shouldClose = true;
+        }
+      }
+
+      if (position.takeProfit) {
+        if (position.side === 'buy' && latestPrice >= position.takeProfit) {
+          shouldClose = true;
+        } else if (position.side === 'sell' && latestPrice <= position.takeProfit) {
+          shouldClose = true;
+        }
+      }
+
+      if (shouldClose) {
+        handleClosePosition(position.id);
+      }
+    });
+  }, [latestPrice, positions]);
+
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
+    <div className="app-shell">
+      <header className="app-header">
+        <div>
+          <h1>TRADESARACE Pro</h1>
+          <p>{currency.toUpperCase()} perpetual simulator</p>
+        </div>
+        <div className="market-pill">BTCUSD LIVE</div>
       </header>
+
+      <div className="app-content">
+        <section className="market-column">
+          <div className="market-stats">
+            <article>
+              <span>Mark Price</span>
+              <strong>{formatCurrency(latestPrice)}</strong>
+            </article>
+            <article>
+              <span>24h Volume</span>
+              <strong>$1.82B</strong>
+            </article>
+            <article>
+              <span>Open Interest</span>
+              <strong>$4.27B</strong>
+            </article>
+            <article>
+              <span>Funding / 8h</span>
+              <strong className={unrealizedPnl >= 0 ? 'up' : 'down'}>
+                {unrealizedPnl >= 0 ? '+0.006%' : '-0.004%'}
+              </strong>
+            </article>
+          </div>
+
+          <div className="chart-card">
+            {isLoading && <p>Loading price data...</p>}
+            {!isLoading && error && <p className="error-message">{error}</p>}
+            {!isLoading && !error && (
+              <Chart
+                width={width}
+                height={height}
+                data={data}
+                timeStampRequest={timeStampRequest}
+                setTimeStampRequest={setTimeStampRequestWrapper}
+              />
+            )}
+          </div>
+
+          {positions.length > 0 && (
+            <section className="positions-panel">
+              <div className="positions-panel-head">
+                <h2>Open Positions ({positions.length})</h2>
+                <button
+                  type="button"
+                  className="close-all-btn"
+                  onClick={handleCloseAllPositions}
+                >
+                  Close All
+                </button>
+              </div>
+              <div className="positions-summary-grid">
+                <article>
+                  <span>Exposure</span>
+                  <strong>{formatCurrency(positionsSummary.notional)}</strong>
+                </article>
+                <article>
+                  <span>Margin In Use</span>
+                  <strong>{formatCurrency(positionsSummary.margin)}</strong>
+                </article>
+                <article>
+                  <span>Long / Short</span>
+                  <strong>
+                    {positionsSummary.longCount} / {positionsSummary.shortCount}
+                  </strong>
+                </article>
+                <article>
+                  <span>Winning</span>
+                  <strong>{positionsSummary.winning}</strong>
+                </article>
+              </div>
+              <div className="positions-list">
+                {positions.map((position) => {
+                  const direction = position.side === 'buy' ? 1 : -1;
+                  const positionPnl = latestPrice
+                    ? (latestPrice - position.executionPrice) * position.amount * direction * position.leverage
+                    : 0;
+                  const pnlPercentage = latestPrice
+                    ? ((latestPrice - position.executionPrice) / position.executionPrice) * 100 * position.leverage
+                    : 0;
+
+                  return (
+                    <div key={position.id} className="position-card">
+                      <div className="position-header">
+                        <span className={`position-side ${position.side}`}>
+                          {position.side === 'buy' ? 'LONG' : 'SHORT'} {position.leverage}x
+                        </span>
+                        <span className="position-time">{position.placedAt.toLocaleTimeString()}</span>
+                        <button
+                          type="button"
+                          className="close-position-btn"
+                          onClick={() => handleClosePosition(position.id)}
+                        >
+                          Close
+                        </button>
+                      </div>
+                      <div className="position-details">
+                        <div>
+                          <span>Size:</span>
+                          <strong>{formatBtc(position.amount)}</strong>
+                        </div>
+                        <div>
+                          <span>Entry:</span>
+                          <strong>{formatCurrency(position.executionPrice)}</strong>
+                        </div>
+                        <div>
+                          <span>Mark:</span>
+                          <strong>{formatCurrency(latestPrice)}</strong>
+                        </div>
+                        <div>
+                          <span>PnL:</span>
+                          <strong className={positionPnl >= 0 ? 'up' : 'down'}>
+                            {positionPnl >= 0 ? '+' : ''}
+                            {formatCurrency(positionPnl)}
+                            <span className="pnl-percentage">
+                              ({pnlPercentage >= 0 ? '+' : ''}
+                              {pnlPercentage.toFixed(2)}%)
+                            </span>
+                          </strong>
+                        </div>
+                      </div>
+                      {(position.stopLoss || position.takeProfit) && (
+                        <div className="position-risk">
+                          {position.stopLoss && (
+                            <span>SL: {formatCurrency(position.stopLoss)}</span>
+                          )}
+                          {position.takeProfit && (
+                            <span>TP: {formatCurrency(position.takeProfit)}</span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+          )}
+        </section>
+
+        <aside className="side-column">
+          <section className="wallet-panel">
+            <h2>Wallet</h2>
+            <div className="wallet-grid">
+              <article>
+                <span>Total Balance</span>
+                <strong>{formatCurrency(wallet.usdBalance)}</strong>
+              </article>
+              <article>
+                <span>Available</span>
+                <strong>{formatCurrency(availableBalance)}</strong>
+              </article>
+              <article>
+                <span>Promo Bonus</span>
+                <strong>{formatCurrency(wallet.bonus)}</strong>
+              </article>
+              <article>
+                <span>Unrealized PnL</span>
+                <strong className={unrealizedPnl >= 0 ? 'up' : 'down'}>
+                  {unrealizedPnl >= 0 ? '+' : ''}
+                  {formatCurrency(unrealizedPnl)}
+                </strong>
+              </article>
+            </div>
+            <div className="wallet-actions">
+              <button type="button">Deposit</button>
+              <button type="button">Withdraw</button>
+              <button type="button">Transfer</button>
+            </div>
+          </section>
+
+          <section className="trade-panel">
+            <h2>Order Entry</h2>
+
+            {successMessage && (
+              <div className="success-message">{successMessage}</div>
+            )}
+
+            <div className="side-toggle">
+              <button
+                type="button"
+                className={side === 'buy' ? 'active buy' : ''}
+                onClick={() => setSide('buy')}
+              >
+                Buy / Long
+              </button>
+              <button
+                type="button"
+                className={side === 'sell' ? 'active sell' : ''}
+                onClick={() => setSide('sell')}
+              >
+                Sell / Short
+              </button>
+            </div>
+
+            <form onSubmit={handlePlaceOrder}>
+              <label htmlFor="orderType">Order Type</label>
+              <select
+                id="orderType"
+                value={orderType}
+                onChange={(event) => setOrderType(event.target.value)}
+              >
+                <option value="market">Market</option>
+                <option value="limit">Limit</option>
+                <option value="stop-limit">Stop Limit</option>
+              </select>
+
+              <label htmlFor="leverage">Leverage</label>
+              <select
+                id="leverage"
+                value={leverage}
+                onChange={(event) => setLeverage(event.target.value)}
+              >
+                {[1, 2, 3, 5, 10, 20, 50].map((value) => (
+                  <option key={value} value={value}>
+                    {value}x
+                  </option>
+                ))}
+              </select>
+
+              <label htmlFor="amount">Size (BTC)</label>
+              <input
+                id="amount"
+                type="number"
+                min="0.001"
+                step="0.001"
+                value={amount}
+                onChange={(event) => setAmount(event.target.value)}
+                placeholder="Min: 0.001"
+              />
+
+              {orderType !== 'market' && (
+                <>
+                  <label htmlFor="limitPrice">Limit Price (USD)</label>
+                  <input
+                    id="limitPrice"
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={limitPrice}
+                    onChange={(event) => setLimitPrice(event.target.value)}
+                    placeholder="Enter limit price"
+                  />
+                </>
+              )}
+
+              <label htmlFor="stopLoss">
+                Stop Loss (optional)
+                <span className="input-hint">
+                  {side === 'buy' ? 'Below entry' : 'Above entry'}
+                </span>
+              </label>
+              <input
+                id="stopLoss"
+                type="number"
+                min="0"
+                step="1"
+                value={stopLoss}
+                onChange={(event) => setStopLoss(event.target.value)}
+                placeholder="Stop loss price"
+              />
+
+              <label htmlFor="takeProfit">
+                Take Profit (optional)
+                <span className="input-hint">
+                  {side === 'buy' ? 'Above entry' : 'Below entry'}
+                </span>
+              </label>
+              <input
+                id="takeProfit"
+                type="number"
+                min="0"
+                step="1"
+                value={takeProfit}
+                onChange={(event) => setTakeProfit(event.target.value)}
+                placeholder="Take profit price"
+              />
+
+              <div className="order-preview">
+                <p>
+                  Entry Price: <strong>{formatCurrency(executionPrice)}</strong>
+                </p>
+                <p>
+                  Notional: <strong>{formatCurrency(notionalValue)}</strong>
+                </p>
+                <p>
+                  Required Margin: <strong>{formatCurrency(estimatedMargin)}</strong>
+                </p>
+                <p>
+                  Available: <strong>{formatCurrency(availableBalance)}</strong>
+                </p>
+              </div>
+
+              {tradeError && <p className="trade-error">{tradeError}</p>}
+
+              <button
+                type="submit"
+                className={side === 'buy' ? 'buy-submit' : 'sell-submit'}
+                disabled={!latestPrice || isLoading}
+              >
+                {side === 'buy' ? 'Open Long' : 'Open Short'}
+              </button>
+            </form>
+          </section>
+        </aside>
+      </div>
     </div>
   );
 }
