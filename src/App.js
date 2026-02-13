@@ -1,5 +1,4 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import './App.css';
 import Chart from './Chart';
 
 function App({
@@ -263,11 +262,10 @@ function App({
 
     const direction = position.side === 'buy' ? 1 : -1;
     const pnl = (latestPrice - position.executionPrice) * position.amount * direction * position.leverage;
-    const returnedMargin = position.amount * position.executionPrice / position.leverage;
 
     setWallet((current) => ({
       ...current,
-      usdBalance: current.usdBalance + returnedMargin + pnl,
+      usdBalance: current.usdBalance + pnl,
     }));
 
     setPositions((current) => current.filter((p) => p.id !== positionId));
@@ -284,17 +282,15 @@ function App({
       (acc, position) => {
         const direction = position.side === 'buy' ? 1 : -1;
         const pnl = (latestPrice - position.executionPrice) * position.amount * direction * position.leverage;
-        const returnedMargin = position.amount * position.executionPrice / position.leverage;
         acc.pnl += pnl;
-        acc.returnedMargin += returnedMargin;
         return acc;
       },
-      { pnl: 0, returnedMargin: 0 }
+      { pnl: 0 }
     );
 
     setWallet((current) => ({
       ...current,
-      usdBalance: current.usdBalance + totals.returnedMargin + totals.pnl,
+      usdBalance: current.usdBalance + totals.pnl,
     }));
     setPositions((current) => current.filter((position) => position.currency !== currency));
     setSuccessMessage(
