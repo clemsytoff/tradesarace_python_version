@@ -1,5 +1,6 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import Chart from './Chart';
+import Leaderboard from './Leaderboard';
 
 function App({
   width = 900,
@@ -243,7 +244,7 @@ function App({
     setPositions((current) => [...current, newPosition]);
 
     setSuccessMessage(
-      `Position opened: ${side === 'buy' ? 'LONG' : 'SHORT'} ${parsedAmount} BTC at ${formatCurrency(
+      `Position opened: ${side === 'buy' ? 'LONG' : 'SHORT'} ${parsedAmount} ${marketLabel} at ${formatCurrency(
         executionPrice
       )} with ${parsedLeverage}x leverage`
     );
@@ -554,7 +555,7 @@ function App({
                 ))}
               </select>
 
-              <label htmlFor="amount">Size (BTC)</label>
+              <label htmlFor="amount">Size ({marketLabel})</label>
               <input
                 id="amount"
                 type="number"
@@ -638,6 +639,8 @@ function App({
               </button>
             </form>
           </section>
+
+          <Leaderboard />
         </aside>
       </div>
     </div>

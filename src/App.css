@@ -21,6 +21,7 @@ body {
   font-family: 'Space Grotesk', sans-serif;
   color: var(--text-primary);
   overflow-x: hidden;
+  overscroll-behavior-y: contain;
   background:
     radial-gradient(800px 500px at 10% -15%, rgba(81, 128, 255, 0.25), transparent 60%),
     radial-gradient(700px 500px at 100% 0%, rgba(59, 208, 139, 0.16), transparent 55%),
@@ -46,11 +47,202 @@ body {
   overflow-x: hidden;
 }
 
+.workspace-topbar {
+  display: flex;
+  justify-content: flex-end;
+  margin: 0 0 8px;
+  position: relative;
+}
+
+.workspace-tabs {
+  margin-bottom: 6px;
+}
+
 .app-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   margin-bottom: 18px;
+}
+
+.auth-buttons {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.auth-buttons button,
+.auth-buttons .auth-link {
+  border-radius: 8px;
+  border: 1px solid #324062;
+  background: #0c1120;
+  color: var(--text-primary);
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 1rem;
+  font-weight: 600;
+  padding: 8px 12px;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+}
+
+.auth-buttons .register-btn {
+  border-color: rgba(81, 128, 255, 0.65);
+  background: rgba(81, 128, 255, 0.18);
+}
+
+.profile-wrap {
+  position: relative;
+}
+
+.profile-trigger {
+  border: 1px solid rgba(143, 154, 188, 0.35);
+  background: #0c1120;
+  border-radius: 999px;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.profile-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  display: block;
+}
+
+.profile-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  width: 220px;
+  border: 1px solid rgba(143, 154, 188, 0.3);
+  border-radius: 12px;
+  background: linear-gradient(165deg, rgba(23, 31, 52, 0.96), rgba(16, 21, 36, 0.97));
+  padding: 10px;
+  z-index: 20;
+  display: grid;
+  gap: 6px;
+}
+
+.profile-menu strong {
+  font-size: 0.9rem;
+}
+
+.profile-menu span {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  word-break: break-all;
+}
+
+.profile-menu button {
+  margin-top: 4px;
+  border: 1px solid rgba(255, 106, 117, 0.55);
+  background: rgba(255, 106, 117, 0.15);
+  color: #ffd9dd;
+  border-radius: 8px;
+  padding: 8px 10px;
+  cursor: pointer;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.auth-page {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+}
+
+.auth-card {
+  width: min(460px, 100%);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: linear-gradient(165deg, rgba(23, 31, 52, 0.88), rgba(16, 21, 36, 0.92));
+  padding: 18px;
+}
+
+.auth-card h1 {
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.auth-card p {
+  margin: 8px 0 14px;
+  color: var(--text-muted);
+}
+
+.auth-form {
+  display: grid;
+  gap: 8px;
+}
+
+.auth-form label {
+  color: var(--text-muted);
+  font-size: 0.76rem;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+
+.auth-form input {
+  width: 100%;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid #324062;
+  background: #0c1120;
+  color: var(--text-primary);
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 0.92rem;
+}
+
+.auth-submit {
+  margin-top: 6px;
+  padding: 11px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+  border-radius: 8px;
+  border: 1px solid rgba(81, 128, 255, 0.65);
+  background: rgba(81, 128, 255, 0.18);
+  color: var(--text-primary);
+  font-family: 'Space Grotesk', sans-serif;
+}
+
+.auth-submit:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.auth-message {
+  margin: 4px 0 0;
+  font-size: 0.84rem;
+}
+
+.auth-message.error {
+  color: #ff9ca4;
+}
+
+.auth-message.success {
+  color: #9ff5dc;
+}
+
+.auth-links {
+  margin-top: 12px;
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.auth-links a {
+  color: #b8cbff;
+  text-decoration: none;
+  font-size: 0.85rem;
 }
 
 .app-header h1 {
@@ -210,7 +402,8 @@ body {
 }
 
 .wallet-panel h2,
-.trade-panel h2 {
+.trade-panel h2,
+.leaderboard-panel h2 {
   margin: 0 0 14px;
   font-size: 0.95rem;
   letter-spacing: 0.05em;
@@ -289,6 +482,84 @@ body {
 .trade-panel form {
   display: grid;
   gap: 8px;
+}
+
+.leaderboard-panel {
+  background: linear-gradient(165deg, rgba(23, 31, 52, 0.88), rgba(16, 21, 36, 0.92));
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 14px;
+}
+
+.leaderboard-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.leaderboard-head span {
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.leaderboard-note {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.leaderboard-note.error {
+  color: #ff9ca4;
+}
+
+.leaderboard-list {
+  display: grid;
+  gap: 8px;
+}
+
+.leaderboard-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid rgba(143, 154, 188, 0.2);
+  border-radius: 10px;
+  background: rgba(8, 11, 20, 0.72);
+  padding: 9px 10px;
+}
+
+.leaderboard-rank {
+  color: #b8cbff;
+  font-weight: 700;
+  font-size: 0.8rem;
+  min-width: 32px;
+}
+
+.leaderboard-user {
+  min-width: 0;
+}
+
+.leaderboard-user strong {
+  display: block;
+  font-size: 0.88rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.leaderboard-user small {
+  display: block;
+  margin-top: 2px;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+}
+
+.leaderboard-balance {
+  font-size: 0.86rem;
 }
 
 .trade-panel select,
@@ -550,22 +821,86 @@ body {
 }
 
 @media (max-width: 700px) {
+  .workspace-topbar {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    background: rgba(10, 16, 32, 0.92);
+    backdrop-filter: blur(8px);
+    padding: 6px 2px;
+    margin-bottom: 6px;
+  }
+
+  .workspace-tabs {
+    position: sticky;
+    top: 56px;
+    z-index: 29;
+    background: rgba(10, 16, 32, 0.92);
+    backdrop-filter: blur(8px);
+    padding-bottom: 6px;
+    margin-bottom: 8px;
+  }
+
   .app-shell {
-    padding: 10px;
+    padding: 8px;
   }
 
   .app-header {
-    gap: 10px;
-    align-items: flex-start;
-    flex-direction: column;
+    gap: 8px;
+    align-items: center;
+    flex-direction: row;
+    margin-bottom: 10px;
+  }
+
+  .app-header h1 {
+    font-size: 1.12rem;
+  }
+
+  .app-header p {
+    font-size: 0.75rem;
+    margin-top: 2px;
+  }
+
+  .market-pill {
+    font-size: 0.7rem;
+    padding: 5px 8px;
   }
 
   .market-stats {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .market-stats article {
+    padding: 8px;
+  }
+
+  .market-stats article:nth-child(n+3) {
+    display: none;
+  }
+
+  .market-stats strong {
+    font-size: 0.92rem;
+  }
+
+  .auth-buttons button,
+  .auth-buttons .auth-link {
+    padding: 7px 10px;
+    font-size: 0.74rem;
+  }
+
+  .profile-trigger {
+    width: 40px;
+    height: 40px;
+  }
+
+  .profile-avatar {
+    width: 32px;
+    height: 32px;
   }
 
   .wallet-actions {
-    grid-template-columns: 1fr;
+    display: none;
   }
 
   .positions-panel-head {
@@ -574,7 +909,11 @@ body {
   }
 
   .positions-summary-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .positions-summary-grid article:nth-child(n+3) {
+    display: none;
   }
 
   .position-header {
@@ -620,9 +959,10 @@ body {
 
   .wallet-panel,
   .trade-panel,
+  .leaderboard-panel,
   .chart-card,
   .positions-panel {
-    padding: 10px;
+    padding: 9px;
   }
 
   .trade-panel select,
@@ -634,12 +974,28 @@ body {
   }
 
   .app-content {
-    gap: 10px;
+    gap: 8px;
   }
 
   .market-column,
   .side-column {
-    gap: 10px;
+    gap: 8px;
+  }
+
+  .leaderboard-row:nth-child(n+6) {
+    display: none;
+  }
+
+  .leaderboard-user strong {
+    font-size: 0.82rem;
+  }
+
+  .leaderboard-user small {
+    font-size: 0.68rem;
+  }
+
+  .leaderboard-balance {
+    font-size: 0.8rem;
   }
 }
 
