@@ -94,7 +94,7 @@ export async function PUT(request) {
 
   try {
     const body = await request.json();
-    if (body && Object.prototype.hasOwnProperty.call(body, 'wallet')) {
+    if (body && Object.prototype.hasOwnProperty.call(body, 'wallet') && Object.prototype.hasOwnProperty.call(body, 'positions')) {
       return NextResponse.json(
         { ok: false, message: 'Wallet is server-managed and cannot be updated from client state.' },
         { status: 400 }
