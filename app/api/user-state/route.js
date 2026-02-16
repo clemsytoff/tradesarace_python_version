@@ -94,11 +94,17 @@ export async function PUT(request) {
 
   try {
     const body = await request.json();
-    const wallet = normalizeWallet(body?.wallet);
+    if (body && Object.prototype.hasOwnProperty.call(body, 'wallet')) {
+      return NextResponse.json(
+        { ok: false, message: 'Wallet is server-managed and cannot be updated from client state.' },
+        { status: 400 }
+      );
+    }
+
     const positions = normalizePositions(body?.positions);
     const result = await query(
-      'UPDATE users SET wallet_json = $1::jsonb, positions_json = $2::jsonb WHERE id = $3',
-      [JSON.stringify(wallet), JSON.stringify(positions), userId]
+      'UPDATE users SET positions_json = $1::jsonb WHERE id = $2',
+      [JSON.stringify(positions), userId]
     );
 
     if (!result.rowCount) {
@@ -108,7 +114,7 @@ export async function PUT(request) {
       );
     }
 
-    return NextResponse.json({ ok: true, wallet, positions });
+    return NextResponse.json({ ok: true, positions });
   } catch {
     return NextResponse.json(
       { ok: false, message: 'Unable to save user state.' },

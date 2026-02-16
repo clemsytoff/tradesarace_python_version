@@ -155,7 +155,6 @@ export default function MarketWorkspace() {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          wallet: sharedWallet,
           positions: sharedPositions,
         }),
       }).catch(() => {});
