@@ -1,6 +1,7 @@
 import bcrypt from 'bcryptjs';
 import { NextResponse } from 'next/server';
 import { query } from '../../../../src/lib/auth-db';
+import { createSessionToken, sessionCookieConfig } from '../../../../src/lib/session';
 
 function normalizeEmail(email) {
   return String(email || '').trim().toLowerCase();
@@ -40,11 +41,13 @@ export async function POST(request) {
       );
     }
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       ok: true,
       message: 'Login successful.',
       user: { id: Number(user.id), name: user.name, email: user.email },
     });
+    response.cookies.set(sessionCookieConfig(createSessionToken(Number(user.id))));
+    return response;
   } catch (error) {
     return NextResponse.json(
       { ok: false, message: 'Unable to login user.' },

@@ -8,7 +8,7 @@ import Box from '@mui/material/Box';
 import Tabs from '@mui/material/Tabs';
 import Tab from '@mui/material/Tab';
 import App from './App';
-import { clearStoredUser, loadStoredUser } from './lib/auth-client';
+import { clearStoredUser } from './lib/auth-client';
 
 const darkTheme = createTheme({
   palette: {
@@ -89,18 +89,26 @@ export default function MarketWorkspace() {
     let isActive = true;
 
     async function bootstrapState() {
-      const user = loadStoredUser();
-      if (!isActive) return;
-      setCurrentUser(user);
+      let authenticatedUser = null;
+      try {
+        const meResponse = await fetch('/api/auth/me', { cache: 'no-store' });
+        const mePayload = await meResponse.json();
+        if (meResponse.ok && mePayload?.ok) {
+          authenticatedUser = mePayload.user;
+        }
+      } catch {}
 
-      if (!user) {
+      if (!isActive) return;
+      setCurrentUser(authenticatedUser);
+
+      if (!authenticatedUser) {
         const guestState = loadGuestState();
         if (!isActive) return;
         setSharedWallet(guestState.wallet);
         setSharedPositions(guestState.positions);
       } else {
         try {
-          const response = await fetch(`/api/user-state?userId=${user.id}`, {
+          const response = await fetch('/api/user-state', {
             cache: 'no-store',
           });
           const payload = await response.json();
@@ -147,8 +155,6 @@ export default function MarketWorkspace() {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          userId: currentUser.id,
-          wallet: sharedWallet,
           positions: sharedPositions,
         }),
       }).catch(() => {});
@@ -158,6 +164,7 @@ export default function MarketWorkspace() {
   }, [sharedWallet, sharedPositions, currentUser, hasHydrated, isStateReady]);
 
   function handleLogout() {
+    fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
     clearStoredUser();
     const guestState = loadGuestState();
     setSharedWallet(guestState.wallet);

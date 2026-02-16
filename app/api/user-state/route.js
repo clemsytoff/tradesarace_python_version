@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { query } from '../../../src/lib/auth-db';
+import { getSessionUserIdFromRequest } from '../../../src/lib/session';
 
 const DEFAULT_WALLET = {
   usdBalance: 20000,
@@ -48,13 +49,11 @@ function parseJson(value, fallback) {
 }
 
 export async function GET(request) {
-  const userIdParam = request.nextUrl.searchParams.get('userId');
-  const userId = Number(userIdParam);
-
-  if (!Number.isFinite(userId) || userId <= 0) {
+  const userId = getSessionUserIdFromRequest(request);
+  if (!userId) {
     return NextResponse.json(
-      { ok: false, message: 'A valid userId is required.' },
-      { status: 400 }
+      { ok: false, message: 'Unauthorized.' },
+      { status: 401 }
     );
   }
 
@@ -85,22 +84,20 @@ export async function GET(request) {
 }
 
 export async function PUT(request) {
+  const userId = getSessionUserIdFromRequest(request);
+  if (!userId) {
+    return NextResponse.json(
+      { ok: false, message: 'Unauthorized.' },
+      { status: 401 }
+    );
+  }
+
   try {
     const body = await request.json();
-    const userId = Number(body?.userId);
-
-    if (!Number.isFinite(userId) || userId <= 0) {
-      return NextResponse.json(
-        { ok: false, message: 'A valid userId is required.' },
-        { status: 400 }
-      );
-    }
-
-    const wallet = normalizeWallet(body?.wallet);
     const positions = normalizePositions(body?.positions);
     const result = await query(
-      'UPDATE users SET wallet_json = $1::jsonb, positions_json = $2::jsonb WHERE id = $3',
-      [JSON.stringify(wallet), JSON.stringify(positions), userId]
+      'UPDATE users SET positions_json = $1::jsonb WHERE id = $2',
+      [JSON.stringify(positions), userId]
     );
 
     if (!result.rowCount) {
