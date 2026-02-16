@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-
 export default function RegisterForm() {
   const router = useRouter();
   const [name, setName] = useState('');
@@ -19,6 +18,7 @@ export default function RegisterForm() {
     try {
       const response = await fetch('/api/auth/register', {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, email, password }),
       });

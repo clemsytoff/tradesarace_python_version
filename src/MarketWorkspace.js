@@ -91,7 +91,10 @@ export default function MarketWorkspace() {
     async function bootstrapState() {
       let authenticatedUser = null;
       try {
-        const meResponse = await fetch('/api/auth/me', { cache: 'no-store' });
+        const meResponse = await fetch('/api/auth/me', {
+          credentials: 'include',
+          cache: 'no-store',
+        });
         const mePayload = await meResponse.json();
         if (meResponse.ok && mePayload?.ok) {
           authenticatedUser = mePayload.user;
@@ -109,6 +112,7 @@ export default function MarketWorkspace() {
       } else {
         try {
           const response = await fetch('/api/user-state', {
+            credentials: 'include',
             cache: 'no-store',
           });
           const payload = await response.json();
@@ -153,6 +157,7 @@ export default function MarketWorkspace() {
     const timeoutId = setTimeout(() => {
       fetch('/api/user-state', {
         method: 'PUT',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           wallet: sharedWallet,
@@ -165,7 +170,10 @@ export default function MarketWorkspace() {
   }, [sharedWallet, sharedPositions, currentUser, hasHydrated, isStateReady]);
 
   function handleLogout() {
-    fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
+    fetch('/api/auth/logout', {
+      method: 'POST',
+      credentials: 'include',
+    }).catch(() => {});
     clearStoredUser();
     const guestState = loadGuestState();
     setSharedWallet(guestState.wallet);

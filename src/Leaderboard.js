@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-
 function formatCurrency(value) {
   return `$${Number(value || 0).toLocaleString(undefined, {
     minimumFractionDigits: 2,
@@ -23,6 +22,7 @@ export default function Leaderboard() {
 
       try {
         const response = await fetch('/api/leaderboard?limit=10', {
+          credentials: 'include',
           cache: 'no-store',
         });
         const payload = await response.json();
